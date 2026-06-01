@@ -245,6 +245,18 @@
     transition:transform .15s;
   }
   .fab:active{transform:scale(.92);}
+  .fab-top{
+    position:absolute;right:18px;bottom:90px;z-index:40;
+    width:46px;height:46px;border-radius:50%;border:none;
+    background:var(--surface);color:var(--ink);font-size:20px;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 18px -4px rgba(22,21,15,.25);
+    border:1.5px solid var(--line-2);
+    transform:translateY(80px);opacity:0;pointer-events:none;
+    transition:transform .35s cubic-bezier(.22,1,.36,1), opacity .3s ease;
+  }
+  .fab-top.visible{transform:translateY(0);opacity:1;pointer-events:auto;}
+  .fab-top:active{transform:scale(.92);}
 
   /* ---- composer sheet ---- */
   .scrim{
@@ -305,6 +317,7 @@
   <main class="feed" id="feed"></main>
 
   <button class="fab" id="fab" aria-label="안건 작성">+</button>
+  <button class="fab-top" id="fab-top" aria-label="맨 위로">↑</button>
 
   <!-- composer -->
   <div class="scrim" id="scrim"></div>
@@ -683,6 +696,14 @@ postBtn.addEventListener('click', ()=>{
   feed.scrollTo({top:0, behavior:'smooth'});
   toast('판결대에 올라갔어요 ⚖️ 링크를 공유해 표를 모아보세요');
 });
+
+/* ---------- scroll-to-top fab ---------- */
+const fabTop = document.getElementById('fab-top');
+feed.addEventListener('scroll', ()=>{
+  if(feed.scrollTop > 200) fabTop.classList.add('visible');
+  else fabTop.classList.remove('visible');
+});
+fabTop.addEventListener('click', ()=>{ feed.scrollTo({top:0, behavior:'smooth'}); });
 
 /* ---------- toast ---------- */
 let toastTimer;
