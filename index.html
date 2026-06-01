@@ -555,9 +555,14 @@ function bindCard(card){
 
   // share
   card.querySelector('.share-btn').addEventListener('click', ()=>{
-    const t = total(a);
     const win = winner(a);
-    toast(`"${labelOf(win.k)}" ${win.pct}% — 공유 카드가 생성됐어요`);
+    const bodyPreview = a.body.length > 60 ? a.body.slice(0, 60) + '…' : a.body;
+    const shareText = `⚖️ 제가 잘못한건가요?\n\n"${a.title}"\n${bodyPreview}\n\n민심의 판결 → ${labelOf(win.k)} ${win.pct}%\n\n👉 직접 판결하러 가기: ${location.href}`;
+    navigator.clipboard.writeText(shareText).then(()=>{
+      toast('친구들이 볼 수 있게 링크를 복사했어요. 공유해보세요 :)');
+    }).catch(()=>{
+      toast('링크를 복사했어요. 공유해보세요 :)');
+    });
   });
 
   // comments
