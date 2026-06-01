@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<title>제가 잘못한건가요? — 판결 피드</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root{
+    --bg:#FBFBF8;
+    --page:#E7E5DE;
+    --surface:#FFFFFF;
+    --ink:#16150F;
+    --ink-2:#6E6C63;
+    --ink-3:#A6A49A;
+    --line:#ECEAE2;
+    --line-2:#E0DDD3;
+    --tint:#F4F3EE;
+
+    --poster:#C75D4E;   /* 글쓴이 잘못 */
+    --other:#3E6FA3;    /* 상대가 잘못 */
+    --both:#B8893C;     /* 둘 다 잘못 */
+
+    --serif:'Gowun Batang', serif;
+    --sans:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+    --pad:22px;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:var(--sans);
+    background:var(--page);
+    color:var(--ink);
+    display:flex;
+    justify-content:center;
+    overflow:hidden;
+    letter-spacing:-0.01em;
+  }
+
+  /* ---- phone frame ---- */
+  .app{
+    position:relative;
+    width:min(480px,100%);
+    height:100dvh;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  @media (min-width:540px){
+    body{padding:26px 0;}
+    .app{
+      height:min(896px, calc(100dvh - 52px));
+      border-radius:30px;
+      box-shadow:0 30px 70px -20px rgba(30,28,20,.35), 0 0 0 1px rgba(0,0,0,.04);
+      overflow:hidden;
+    }
+  }
+
+  /* ---- top bar ---- */
+  .topbar{
+    flex:0 0 auto;
+    height:54px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    background:rgba(251,251,248,.82);
+    backdrop-filter:saturate(180%) blur(14px);
+    border-bottom:1px solid var(--line);
+    position:relative;
+    z-index:30;
+  }
+  .brand{
+    font-size:16px;
+    font-weight:700;
+    letter-spacing:-0.03em;
+    display:flex;align-items:center;gap:6px;
+  }
+  .brand .scale{font-size:15px; filter:grayscale(.15);}
+
+  /* ---- feed ---- */
+  .feed{
+    flex:1 1 auto;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scroll-snap-type:y proximity;
+    scroll-behavior:smooth;
+    -webkit-overflow-scrolling:touch;
+  }
+  .feed::-webkit-scrollbar{width:0;}
+
+  /* ---- card ---- */
+  .card{
+    scroll-snap-align:start;
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    padding:26px var(--pad) 0;
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .card-head{display:flex;align-items:center;gap:9px;margin-bottom:18px;}
+  .cat{
+    font-size:12.5px;font-weight:600;color:var(--ink-2);
+    background:var(--tint);
+    padding:5px 11px;border-radius:999px;
+    letter-spacing:0;
+  }
+  .agenda-no{font-size:12.5px;color:var(--ink-3);font-weight:500;font-variant-numeric:tabular-nums;}
+
+  .title{
+    font-size:23px;font-weight:700;line-height:1.32;
+    letter-spacing:-0.025em;margin:0 0 16px;
+  }
+  .body{
+    font-size:16.5px;line-height:1.68;color:#2E2C24;
+    white-space:pre-wrap;margin:0 0 22px;font-weight:400;
+  }
+
+  .teaser{
+    display:flex;align-items:center;gap:7px;
+    font-size:13px;color:var(--ink-3);margin-bottom:18px;font-weight:500;
+  }
+  .teaser .pulse{width:6px;height:6px;border-radius:50%;background:var(--poster);
+    box-shadow:0 0 0 0 rgba(199,93,78,.5);animation:pulse 2.2s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(199,93,78,.45);}70%{box-shadow:0 0 0 7px rgba(199,93,78,0);}100%{box-shadow:0 0 0 0 rgba(199,93,78,0);}}
+
+  /* ---- vote buttons ---- */
+  .votes{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+  .vote{
+    display:flex;align-items:center;gap:12px;
+    width:100%;padding:16px 18px;
+    background:var(--surface);
+    border:1.5px solid var(--line-2);
+    border-radius:15px;
+    font-family:var(--sans);
+    font-size:16px;font-weight:600;color:var(--ink);
+    cursor:pointer;text-align:left;
+    transition:border-color .18s, background .18s, transform .12s;
+  }
+  .vote .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+  .vote[data-k="poster"] .dot{background:var(--poster);}
+  .vote[data-k="other"]  .dot{background:var(--other);}
+  .vote[data-k="both"]   .dot{background:var(--both);}
+  .vote .arrow{margin-left:auto;color:var(--ink-3);font-size:18px;transition:transform .18s, color .18s;}
+  .vote:hover{border-color:#CFCCC0;}
+  .vote:active{transform:scale(.985);}
+  .vote:hover .arrow{transform:translateX(3px);color:var(--ink-2);}
+
+  .swipe-hint{
+    margin-top:auto;padding:20px 0 26px;
+    text-align:center;color:var(--ink-3);font-size:12.5px;font-weight:500;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+  }
+  .swipe-hint .chev{font-size:15px;animation:floaty 1.8s ease-in-out infinite;}
+  @keyframes floaty{0%,100%{transform:translateY(0);opacity:.6;}50%{transform:translateY(-4px);opacity:1;}}
+
+  /* ---- result (revealed after vote) ---- */
+  .result{
+    max-height:0;opacity:0;overflow:hidden;
+    transition:max-height .5s cubic-bezier(.22,1,.36,1), opacity .4s ease;
+  }
+  .card.voted .result{max-height:2000px;opacity:1;}
+  .card.voted .votes{display:none;}
+  .card.voted .swipe-hint{display:none;}
+  .card.voted .teaser{display:none;}
+
+  .verdict{
+    border-top:1px solid var(--line);
+    padding-top:22px;margin-bottom:6px;
+  }
+  .verdict-label{font-size:12.5px;color:var(--ink-3);font-weight:600;letter-spacing:0.02em;margin-bottom:5px;}
+  .verdict-line{
+    font-family:var(--serif);
+    font-size:21px;font-weight:700;line-height:1.4;letter-spacing:-0.01em;
+  }
+  .verdict-line b{color:var(--poster);}
+  .verdict-line .cnt{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--ink-2);margin-left:4px;}
+
+  .bars{margin:22px 0 6px;display:flex;flex-direction:column;gap:15px;}
+  .bar-row{}
+  .bar-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:7px;}
+  .bar-name{font-size:14.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:7px;}
+  .bar-name .mine{
+    font-size:10.5px;font-weight:700;color:#fff;background:var(--ink);
+    padding:2px 6px;border-radius:5px;letter-spacing:0;
+  }
+  .bar-pct{font-size:14.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-2);}
+  .bar-pct .v{font-size:11px;font-weight:500;color:var(--ink-3);margin-left:5px;}
+  .track{height:11px;border-radius:999px;background:var(--tint);overflow:hidden;}
+  .fill{height:100%;width:0;border-radius:999px;transition:width .8s cubic-bezier(.22,1,.36,1);}
+  .bar-row[data-k="poster"] .fill{background:var(--poster);}
+  .bar-row[data-k="other"]  .fill{background:var(--other);}
+  .bar-row[data-k="both"]   .fill{background:var(--both);}
+  .bar-row.dim{opacity:.5;}
+
+  .share-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;margin:20px 0 4px;padding:13px;
+    background:var(--surface);border:1.5px solid var(--line-2);border-radius:13px;
+    font-family:var(--sans);font-size:14.5px;font-weight:700;color:var(--ink);cursor:pointer;
+    transition:background .15s,border-color .15s;
+  }
+  .share-btn:hover{background:var(--tint);border-color:#CFCCC0;}
+
+  /* ---- comments ---- */
+  .comments{border-top:1px solid var(--line);margin-top:22px;padding-top:18px;padding-bottom:28px;}
+  .cmt-head{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:6px;}
+  .cmt-head .n{color:var(--ink-3);font-weight:600;}
+  .cmt{display:flex;flex-direction:column;gap:5px;margin-bottom:16px;}
+  .cmt-meta{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-3);}
+  .cmt-nick{font-weight:700;color:var(--ink-2);}
+  .cmt-text{font-size:14.5px;line-height:1.55;color:#2E2C24;}
+  .cmt-like{font-size:12px;color:var(--ink-3);margin-top:1px;cursor:pointer;width:fit-content;user-select:none;}
+  .cmt-like:hover{color:var(--poster);}
+
+  .cmt-input{display:flex;gap:8px;align-items:center;margin-top:6px;}
+  .cmt-input input{
+    flex:1;padding:12px 15px;border:1.5px solid var(--line-2);border-radius:12px;
+    font-family:var(--sans);font-size:14.5px;color:var(--ink);background:var(--surface);outline:none;
+    transition:border-color .15s;
+  }
+  .cmt-input input:focus{border-color:#C0BCAE;}
+  .cmt-send{
+    flex:0 0 auto;padding:12px 16px;border:none;border-radius:12px;background:var(--ink);color:#fff;
+    font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s;
+  }
+  .cmt-send:active{opacity:.8;}
+
+  /* ---- FAB ---- */
+  .fab{
+    position:absolute;right:18px;bottom:22px;z-index:40;
+    width:56px;height:56px;border-radius:50%;border:none;
+    background:var(--ink);color:#fff;font-size:28px;font-weight:300;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 24px -6px rgba(22,21,15,.5);
+    transition:transform .15s;
+  }
+  .fab:active{transform:scale(.92);}
+
+  /* ---- composer sheet ---- */
+  .scrim{
+    position:absolute;inset:0;z-index:50;background:rgba(20,19,12,.32);
+    opacity:0;pointer-events:none;transition:opacity .28s;
+  }
+  .scrim.open{opacity:1;pointer-events:auto;}
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:60;
+    background:var(--bg);border-radius:24px 24px 0 0;
+    padding:10px var(--pad) 26px;
+    transform:translateY(110%);transition:transform .34s cubic-bezier(.22,1,.36,1);
+    box-shadow:0 -16px 40px -12px rgba(20,19,12,.3);
+    max-height:90%;overflow-y:auto;
+  }
+  .sheet.open{transform:translateY(0);}
+  .grip{width:38px;height:4px;border-radius:99px;background:var(--line-2);margin:8px auto 18px;}
+  .sheet h3{margin:0 0 4px;font-size:19px;font-weight:700;letter-spacing:-0.02em;}
+  .sheet .sub{margin:0 0 20px;font-size:13.5px;color:var(--ink-2);}
+  .field{margin-bottom:18px;}
+  .field label{display:block;font-size:13px;font-weight:700;color:var(--ink-2);margin-bottom:8px;}
+  .field input[type=text], .field textarea{
+    width:100%;border:1.5px solid var(--line-2);border-radius:13px;background:var(--surface);
+    font-family:var(--sans);font-size:15.5px;color:var(--ink);padding:13px 15px;outline:none;
+    transition:border-color .15s;resize:none;
+  }
+  .field input:focus,.field textarea:focus{border-color:#C0BCAE;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{
+    padding:9px 15px;border:1.5px solid var(--line-2);border-radius:999px;background:var(--surface);
+    font-family:var(--sans);font-size:14px;font-weight:600;color:var(--ink-2);cursor:pointer;
+    transition:all .15s;
+  }
+  .chip.sel{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .post-btn{
+    width:100%;margin-top:8px;padding:16px;border:none;border-radius:15px;background:var(--ink);color:#fff;
+    font-family:var(--sans);font-size:16px;font-weight:700;cursor:pointer;transition:opacity .15s;
+  }
+  .post-btn:disabled{opacity:.4;cursor:default;}
+
+  /* toast */
+  .toast{
+    position:absolute;left:50%;bottom:96px;transform:translateX(-50%) translateY(10px);
+    background:var(--ink);color:#fff;font-size:13.5px;font-weight:600;
+    padding:11px 18px;border-radius:12px;z-index:70;opacity:0;pointer-events:none;
+    transition:opacity .25s, transform .25s;white-space:nowrap;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <span class="brand"><span class="scale">⚖️</span>제가 잘못한건가요?</span>
+  </header>
+
+  <main class="feed" id="feed"></main>
+
+  <button class="fab" id="fab" aria-label="안건 작성">+</button>
+
+  <!-- composer -->
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet">
+    <div class="grip"></div>
+    <h3>새 안건 올리기</h3>
+    <p class="sub">익명으로 올라가요. 사연 속 인물의 실명·신상은 적지 말아 주세요.</p>
+
+    <div class="field">
+      <label>제목</label>
+      <input type="text" id="c-title" maxlength="40" placeholder="한 줄로 상황을 요약해 주세요" />
+    </div>
+    <div class="field">
+      <label>상황</label>
+      <textarea id="c-body" rows="5" maxlength="500" placeholder="무슨 일이 있었는지 배심원들이 판결할 수 있게 적어주세요"></textarea>
+    </div>
+    <div class="field">
+      <label>카테고리</label>
+      <div class="chips" id="c-chips">
+        <button class="chip" data-cat="연애">연애</button>
+        <button class="chip" data-cat="가족">가족</button>
+        <button class="chip" data-cat="친구">친구</button>
+        <button class="chip" data-cat="직장">직장</button>
+        <button class="chip" data-cat="기타">기타</button>
+      </div>
+    </div>
+    <button class="post-btn" id="post-btn" disabled>판결대에 올리기</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const OPTIONS = [
+  {k:'poster', label:'글쓴이 잘못'},
+  {k:'other',  label:'상대가 잘못'},
+  {k:'both',   label:'둘 다 잘못'},
+];
+
+let agendas = [
+  {
+    id:3, cat:'직장', title:'회식 빠졌다고 단톡방에서 저격당했어요',
+    body:'회식 날 한 달 전에 잡아둔 병원 예약이 있어서 못 간다고 미리 말했어요. 그랬더니 팀장님이 단톡방에 "요즘 애들은 회식도 업무인 걸 모른다"고 한마디 남기셨어요. 다음 날부터 팀 분위기가 싸늘한데… 제가 사회생활을 못하는 건가요?',
+    votes:{poster:214, other:2317, both:391},
+    comments:[
+      {nick:'정의의여신', text:'예약을 한 달 전에 잡았고 미리 말했으면 끝난 얘기죠. 팀장이 단톡방에 올린 게 더 문제.', likes:312},
+      {nick:'15년차직장인', text:'회식이 업무면 수당 주든가요…', likes:198},
+    ]
+  },
+  {
+    id:2, cat:'가족', title:'엄마가 제 앞으로 온 택배를 다 뜯어봐요',
+    body:'독립했다가 사정상 본가에 다시 들어왔는데, 제 이름으로 온 택배를 엄마가 전부 뜯어서 "정리"해 두세요. 속옷이든 약이든 가리지 않고요. 불편하다고 말씀드리면 "엄마가 궁금해서 그랬지, 뭘 그런 걸로 유난이냐"고 하세요.',
+    votes:{poster:97, other:1521, both:418},
+    comments:[
+      {nick:'개인주의자', text:'성인 자녀 택배를 동의 없이 뜯는 건 선 넘은 거예요.', likes:241},
+      {nick:'우리집도그래', text:'둘 다 잘못 같음. 엄마도 그렇지만 같이 사는 이상 대화로 룰을 정해야…', likes:88},
+    ]
+  },
+  {
+    id:1, cat:'연애', title:'100일에 친구 결혼식이 겹쳤습니다',
+    body:'여자친구랑 100일인데 하필 같은 날 10년 절친 결혼식이 잡혔어요. 결혼식은 가야 하니까 100일은 바로 다음 날 제대로 챙기자고 했더니, 여친이 "나보다 친구가 먼저냐"며 크게 서운해해요. 저는 둘 다 중요한 건데… 제가 잘못한 건가요?',
+    votes:{poster:331, other:1842, both:512},
+    comments:[
+      {nick:'결혼10번해봄', text:'결혼식은 못 가면 평생 못 가요. 100일은 미룰 수 있고. 글쓴이 합리적.', likes:402},
+      {nick:'연애고수', text:'논리는 맞는데 "친구가 먼저냐"는 말엔 서운함이 깔린 거라 달래는 게 먼저였을 듯.', likes:176},
+    ]
+  },
+];
+
+const feed = document.getElementById('feed');
+const nf = n => n.toLocaleString('ko-KR');
+
+function cardHTML(a){
+  const total = a.votes.poster + a.votes.other + a.votes.both;
+  const teaser = total > 0
+    ? `<span class="pulse"></span>지금까지 <b style="color:var(--ink-2);font-weight:700">${nf(total)}명</b>이 판결했어요`
+    : `<span class="pulse"></span>아직 아무도 판결하지 않았어요. 첫 판결을 내려주세요`;
+
+  const voteBtns = OPTIONS.map(o=>`
+    <button class="vote" data-k="${o.k}">
+      <span class="dot"></span>${o.label}
+      <span class="arrow">→</span>
+    </button>`).join('');
+
+  const bars = OPTIONS.map(o=>`
+    <div class="bar-row" data-k="${o.k}">
+      <div class="bar-top">
+        <span class="bar-name">${o.label}<span class="mine" hidden>나의 판결</span></span>
+        <span class="bar-pct"><span class="p">0</span>%<span class="v">(<span class="c">0</span>표)</span></span>
+      </div>
+      <div class="track"><div class="fill"></div></div>
+    </div>`).join('');
+
+  const cmtList = a.comments.map((c,i)=>commentHTML(c,i)).join('');
+
+  return `
+  <article class="card" data-id="${a.id}">
+    <div class="card-head">
+      <span class="cat">${a.cat}</span>
+      <span class="agenda-no">안건 #${String(a.id).padStart(3,'0')}</span>
+    </div>
+    <h2 class="title">${a.title}</h2>
+    <p class="body">${a.body}</p>
+
+    <div class="teaser">${teaser}</div>
+
+    <div class="votes">${voteBtns}</div>
+
+    <div class="swipe-hint"><span class="chev">↑</span>위로 밀어 다음 안건 보기</div>
+
+    <div class="result">
+      <div class="verdict">
+        <div class="verdict-label">민심의 판결</div>
+        <div class="verdict-line"></div>
+      </div>
+      <div class="bars">${bars}</div>
+      <button class="share-btn">⚖️ 이 판결 결과 공유하기</button>
+
+      <div class="comments">
+        <div class="cmt-head">댓글 <span class="n">${a.comments.length}</span></div>
+        <div class="cmt-list">${cmtList}</div>
+        <div class="cmt-input">
+          <input type="text" placeholder="배심원으로서 한마디 거들기…" maxlength="200" />
+          <button class="cmt-send">등록</button>
+        </div>
+      </div>
+    </div>
+  </article>`;
+}
+
+function commentHTML(c){
+  return `
+    <div class="cmt">
+      <div class="cmt-meta"><span class="cmt-nick">${c.nick}</span><span>·</span><span>방금</span></div>
+      <div class="cmt-text">${c.text}</div>
+      <div class="cmt-like" data-likes="${c.likes}">♡ ${nf(c.likes)}</div>
+    </div>`;
+}
+
+function render(){
+  feed.innerHTML = agendas.map(cardHTML).join('');
+  feed.querySelectorAll('.card').forEach(bindCard);
+}
+
+function bindCard(card){
+  const id = +card.dataset.id;
+  const a = agendas.find(x=>x.id===id);
+
+  // vote
+  card.querySelectorAll('.vote').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(card.classList.contains('voted')) return;
+      const k = btn.dataset.k;
+      a.votes[k] += 1;
+      revealResult(card, a, k);
+    });
+  });
+
+  // share
+  card.querySelector('.share-btn').addEventListener('click', ()=>{
+    const t = total(a);
+    const win = winner(a);
+    toast(`"${labelOf(win.k)}" ${win.pct}% — 공유 카드가 생성됐어요`);
+  });
+
+  // comments
+  const input = card.querySelector('.cmt-input input');
+  const send  = card.querySelector('.cmt-send');
+  const list  = card.querySelector('.cmt-list');
+  const headN = card.querySelector('.cmt-head .n');
+  const submit = ()=>{
+    const v = input.value.trim();
+    if(!v) return;
+    a.comments.push({nick:'익명의 배심원', text:v, likes:0});
+    list.insertAdjacentHTML('beforeend', commentHTML({nick:'익명의 배심원', text:v, likes:0}));
+    bindLikes(list);
+    headN.textContent = a.comments.length;
+    input.value='';
+  };
+  send.addEventListener('click', submit);
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+
+  bindLikes(list);
+}
+
+function bindLikes(scope){
+  scope.querySelectorAll('.cmt-like').forEach(el=>{
+    if(el.dataset.bound) return;
+    el.dataset.bound = '1';
+    el.addEventListener('click', ()=>{
+      let n = +el.dataset.likes;
+      if(el.dataset.liked){ n--; el.removeAttribute('data-liked'); el.style.color=''; }
+      else { n++; el.dataset.liked='1'; el.style.color='var(--poster)'; }
+      el.dataset.likes = n;
+      el.innerHTML = `${el.dataset.liked?'♥':'♡'} ${nf(n)}`;
+    });
+  });
+}
+
+function total(a){ return a.votes.poster + a.votes.other + a.votes.both; }
+function labelOf(k){ return OPTIONS.find(o=>o.k===k).label; }
+function winner(a){
+  const t = total(a);
+  let best={k:'poster',c:-1};
+  OPTIONS.forEach(o=>{ if(a.votes[o.k]>best.c) best={k:o.k,c:a.votes[o.k]}; });
+  return {...best, pct: t? Math.round(best.c/t*100):0};
+}
+
+function revealResult(card, a, mine){
+  const t = total(a);
+  const win = winner(a);
+  const wColor = `var(--${win.k})`;
+
+  // verdict line
+  const vline = card.querySelector('.verdict-line');
+  vline.innerHTML = `<b style="color:${wColor}">${labelOf(win.k)}</b><span class="cnt">${nf(a.votes[win.k])}표 · ${win.pct}%</span>`;
+
+  // bars
+  card.querySelectorAll('.bar-row').forEach(row=>{
+    const k = row.dataset.k;
+    const c = a.votes[k];
+    const pct = t? Math.round(c/t*100):0;
+    if(k!==win.k) row.classList.add('dim');
+    row.querySelector('.c').textContent = nf(c);
+    if(k===mine) row.querySelector('.mine').hidden = false;
+    // animate
+    const fill = row.querySelector('.fill');
+    const pEl = row.querySelector('.p');
+    requestAnimationFrame(()=>{ setTimeout(()=>{ fill.style.width = pct+'%'; },50); });
+    animateCount(pEl, pct, 800);
+  });
+
+  card.classList.add('voted');
+  setTimeout(()=>{ card.querySelector('.verdict').scrollIntoView({behavior:'smooth', block:'nearest'}); }, 260);
+}
+
+function animateCount(el, target, dur){
+  const start=performance.now();
+  function step(now){
+    const p=Math.min((now-start)/dur,1);
+    el.textContent = Math.round(p*target);
+    if(p<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ---------- composer ---------- */
+const fab=document.getElementById('fab'), scrim=document.getElementById('scrim'),
+      sheet=document.getElementById('sheet'), postBtn=document.getElementById('post-btn'),
+      cTitle=document.getElementById('c-title'), cBody=document.getElementById('c-body'),
+      chips=document.getElementById('c-chips');
+let selCat=null;
+
+function openSheet(){ scrim.classList.add('open'); sheet.classList.add('open'); }
+function closeSheet(){ scrim.classList.remove('open'); sheet.classList.remove('open'); }
+fab.addEventListener('click', openSheet);
+scrim.addEventListener('click', closeSheet);
+
+chips.querySelectorAll('.chip').forEach(ch=>{
+  ch.addEventListener('click', ()=>{
+    chips.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+    ch.classList.add('sel'); selCat=ch.dataset.cat; validate();
+  });
+});
+[cTitle,cBody].forEach(el=>el.addEventListener('input', validate));
+function validate(){
+  postBtn.disabled = !(cTitle.value.trim() && cBody.value.trim() && selCat);
+}
+
+postBtn.addEventListener('click', ()=>{
+  const newId = Math.max(...agendas.map(a=>a.id)) + 1;
+  agendas.unshift({
+    id:newId, cat:selCat, title:cTitle.value.trim(), body:cBody.value.trim(),
+    votes:{poster:0,other:0,both:0}, comments:[]
+  });
+  render();
+  closeSheet();
+  cTitle.value=''; cBody.value=''; selCat=null;
+  chips.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+  postBtn.disabled=true;
+  feed.scrollTo({top:0, behavior:'smooth'});
+  toast('판결대에 올라갔어요 ⚖️ 링크를 공유해 표를 모아보세요');
+});
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+render();
+</script>
+</body>
+</html>
