@@ -659,6 +659,7 @@ function bindCard(card){
       const k = btn.dataset.k;
       a.votes[k] += 1;
       revealResult(card, a, k);
+      gtag('event', 'vote_cast', { agenda_id: a.id, agenda_title: a.title, vote_type: k, category: a.cat });
     });
   });
 
@@ -672,6 +673,7 @@ function bindCard(card){
     }).catch(()=>{
       toast('링크를 복사했어요. 공유해보세요 :)');
     });
+    gtag('event', 'result_share', { agenda_id: a.id, agenda_title: a.title, winner: win.k, winner_pct: win.pct });
   });
 
   // comments
@@ -687,6 +689,7 @@ function bindCard(card){
     bindLikes(list);
     headN.textContent = a.comments.length;
     input.value='';
+    gtag('event', 'comment_submit', { agenda_id: a.id, agenda_title: a.title });
   };
   send.addEventListener('click', submit);
   input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
@@ -762,7 +765,7 @@ const fab=document.getElementById('fab'), scrim=document.getElementById('scrim')
       chips=document.getElementById('c-chips');
 let selCat=null;
 
-function openSheet(){ scrim.classList.add('open'); sheet.classList.add('open'); }
+function openSheet(){ scrim.classList.add('open'); sheet.classList.add('open'); gtag('event', 'compose_open'); }
 function closeSheet(){ scrim.classList.remove('open'); sheet.classList.remove('open'); }
 fab.addEventListener('click', openSheet);
 scrim.addEventListener('click', closeSheet);
@@ -847,6 +850,7 @@ postBtn.addEventListener('click', ()=>{
     id:newId, cat:selCat, title:cTitle.value.trim(), body:cBody.value.trim(),
     votes:{poster:0,other:0,both:0}, comments:[]
   });
+  gtag('event', 'post_submit', { agenda_title: cTitle.value.trim(), category: selCat });
   render();
   closeSheet();
   cTitle.value=''; cBody.value=''; selCat=null;
