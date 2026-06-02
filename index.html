@@ -310,6 +310,63 @@
   }
   .post-btn:disabled{opacity:.4;cursor:default;}
 
+  /* ---- footer ---- */
+  .footer{
+    flex:0 0 auto;
+    padding:10px var(--pad) 14px;
+    display:flex;justify-content:center;gap:20px;
+    border-top:1px solid var(--line);
+    background:var(--bg);
+    z-index:20;
+  }
+  .footer a{font-size:11.5px;color:var(--ink-3);text-decoration:none;font-weight:500;}
+  .footer a:hover{color:var(--ink-2);}
+
+  /* ---- privacy modal ---- */
+  .pv-modal{
+    position:absolute;inset:0;z-index:80;
+    background:var(--bg);
+    display:flex;flex-direction:column;
+    transform:translateY(100%);
+    transition:transform .34s cubic-bezier(.22,1,.36,1);
+  }
+  .pv-modal.open{transform:translateY(0);}
+  .pv-header{
+    flex:0 0 auto;height:54px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 var(--pad);
+    border-bottom:1px solid var(--line);
+    background:rgba(251,251,248,.92);
+    backdrop-filter:blur(12px);
+  }
+  .pv-header span{font-size:15px;font-weight:700;}
+  .pv-close{
+    background:none;border:none;font-size:22px;color:var(--ink-3);
+    cursor:pointer;padding:4px;line-height:1;
+  }
+  .pv-modal iframe{flex:1;border:none;width:100%;}
+
+  /* ---- cookie banner ---- */
+  .cookie{
+    position:absolute;left:12px;right:12px;bottom:12px;z-index:75;
+    background:var(--ink);color:#fff;
+    padding:14px 16px;border-radius:16px;
+    display:flex;align-items:center;gap:12px;
+    transform:translateY(calc(100% + 20px));opacity:0;
+    transition:transform .4s cubic-bezier(.22,1,.36,1), opacity .3s ease;
+    pointer-events:none;
+  }
+  .cookie.show{transform:translateY(0);opacity:1;pointer-events:auto;}
+  .cookie p{flex:1;font-size:12.5px;line-height:1.55;margin:0;color:rgba(255,255,255,.85);}
+  .cookie p a{color:#fff;font-weight:600;text-decoration:underline;}
+  .cookie-ok{
+    flex:0 0 auto;padding:9px 16px;
+    background:#fff;color:var(--ink);
+    border:none;border-radius:10px;
+    font-family:var(--sans);font-size:13px;font-weight:700;
+    cursor:pointer;white-space:nowrap;
+  }
+
   /* toast */
   .toast{
     position:absolute;left:50%;bottom:96px;transform:translateX(-50%) translateY(10px);
@@ -361,6 +418,27 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <footer class="footer">
+    <a href="#" id="open-privacy">개인정보처리방침</a>
+    <a href="#" id="open-terms">이용약관</a>
+  </footer>
+
+  <!-- privacy / terms modal -->
+  <div class="pv-modal" id="pv-modal">
+    <div class="pv-header">
+      <span id="pv-title">개인정보처리방침</span>
+      <button class="pv-close" id="pv-close">✕</button>
+    </div>
+    <iframe id="pv-frame" src="" title="정책 페이지"></iframe>
+  </div>
+
+  <!-- cookie consent -->
+  <div class="cookie" id="cookie-banner">
+    <p>이 사이트는 서비스 개선 및 맞춤 광고를 위해 쿠키를 사용합니다.
+       <a href="#" id="cookie-policy-link">자세히 보기</a></p>
+    <button class="cookie-ok" id="cookie-ok">확인</button>
+  </div>
 </div>
 
 <script>
@@ -799,6 +877,40 @@ function toast(msg){
 }
 
 render();
+
+/* ---------- privacy / terms modal ---------- */
+const pvModal  = document.getElementById('pv-modal');
+const pvFrame  = document.getElementById('pv-frame');
+const pvTitle  = document.getElementById('pv-title');
+const pvCloseBtn = document.getElementById('pv-close');
+
+function openPolicy(section){
+  pvTitle.textContent = section === 'terms' ? '이용약관' : '개인정보처리방침';
+  pvFrame.src = 'privacy.html' + (section ? '#' + section : '');
+  pvModal.classList.add('open');
+}
+function closePolicy(){
+  pvModal.classList.remove('open');
+  setTimeout(() => { pvFrame.src = ''; }, 380);
+}
+
+document.getElementById('open-privacy').addEventListener('click', e => { e.preventDefault(); openPolicy(''); });
+document.getElementById('open-terms').addEventListener('click',   e => { e.preventDefault(); openPolicy('terms'); });
+pvCloseBtn.addEventListener('click', closePolicy);
+
+/* ---------- cookie consent ---------- */
+const cookieBanner = document.getElementById('cookie-banner');
+if (!localStorage.getItem('cookie_ok')) {
+  setTimeout(() => cookieBanner.classList.add('show'), 1500);
+}
+document.getElementById('cookie-ok').addEventListener('click', () => {
+  localStorage.setItem('cookie_ok', '1');
+  cookieBanner.classList.remove('show');
+});
+document.getElementById('cookie-policy-link').addEventListener('click', e => {
+  e.preventDefault();
+  openPolicy('');
+});
 </script>
 </body>
 </html>
