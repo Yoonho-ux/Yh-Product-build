@@ -182,12 +182,11 @@
     el.classList.add('active');
   }
 
-  // 앵커로 직접 접근 시 해당 탭 열기
-  const hash = location.hash.replace('#','');
-  if(hash === 'terms'){
-    show('terms', document.querySelector('nav a:nth-child(2)'));
-    setTimeout(() => window.scrollTo(0, 0), 0);
-  }
+  window.addEventListener('message', function(e){
+    if(e.data === 'show-terms'){
+      show('terms', document.querySelector('nav a:nth-child(2)'));
+    }
+  });
 </script>
 </body>
 </html>

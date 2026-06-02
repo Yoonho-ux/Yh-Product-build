@@ -891,8 +891,14 @@ const pvCloseBtn = document.getElementById('pv-close');
 
 function openPolicy(section){
   pvTitle.textContent = section === 'terms' ? '이용약관' : '개인정보처리방침';
-  pvFrame.src = 'privacy.html' + (section ? '#' + section : '');
   pvModal.classList.add('open');
+  pvFrame.src = 'privacy.html';
+  if(section === 'terms'){
+    pvFrame.addEventListener('load', function onLoad(){
+      pvFrame.removeEventListener('load', onLoad);
+      pvFrame.contentWindow.postMessage('show-terms', '*');
+    });
+  }
 }
 function closePolicy(){
   pvModal.classList.remove('open');
