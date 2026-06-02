@@ -864,7 +864,7 @@ feed.addEventListener('scroll', ()=>{
   if(y < lastScrollY && y > 100){
     fabTop.classList.add('visible');
     fab.classList.add('shifted');
-  } else {
+  } else if(y > lastScrollY || y <= 100){
     fabTop.classList.remove('visible');
     fab.classList.remove('shifted');
   }
