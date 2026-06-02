@@ -336,14 +336,19 @@
     display:flex;align-items:center;justify-content:space-between;
     padding:0 var(--pad);
     border-bottom:1px solid var(--line);
-    background:rgba(251,251,248,.92);
-    backdrop-filter:blur(12px);
+    background:var(--bg);
   }
   .pv-header span{font-size:15px;font-weight:700;}
   .pv-close{
-    background:none;border:none;font-size:22px;color:var(--ink-3);
-    cursor:pointer;padding:4px;line-height:1;
+    display:flex;align-items:center;gap:5px;
+    background:var(--tint);border:none;border-radius:999px;
+    padding:7px 14px;
+    font-family:var(--sans);font-size:13.5px;font-weight:700;color:var(--ink-2);
+    cursor:pointer;line-height:1;
+    transition:background .15s, color .15s;
   }
+  .pv-close:hover{background:var(--line);color:var(--ink);}
+  .pv-close:active{opacity:.7;}
   .pv-modal iframe{flex:1;border:none;width:100%;}
 
   /* ---- cookie banner ---- */
@@ -428,7 +433,7 @@
   <div class="pv-modal" id="pv-modal">
     <div class="pv-header">
       <span id="pv-title">개인정보처리방침</span>
-      <button class="pv-close" id="pv-close">✕</button>
+      <button class="pv-close" id="pv-close">닫기</button>
     </div>
     <iframe id="pv-frame" src="" title="정책 페이지"></iframe>
   </div>
