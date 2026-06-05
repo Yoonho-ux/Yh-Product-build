@@ -446,7 +446,19 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+/* ---- Supabase ---- */
+const { createClient } = supabase;
+const db = createClient(
+  'https://xbpxmrlxvnhpyxthnmuf.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhicHhtcmx4dm5ocHl4dGhubXVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjY3MzUsImV4cCI6MjA5NjIwMjczNX0.OW3-RYfoxy_eqbCU-qKfbr6U3iVofDkNAOo3tjXAU18'
+);
+
+if (!localStorage.getItem('sid')) localStorage.setItem('sid', crypto.randomUUID());
+const SID = localStorage.getItem('sid');
+let myVotes = JSON.parse(localStorage.getItem('my_votes') || '{}');
+
 const OPTIONS = [
   {k:'poster', label:'글쓴이 잘못'},
   {k:'other',  label:'상대가 잘못'},
@@ -576,6 +588,41 @@ let agendas = [
 const feed = document.getElementById('feed');
 const nf = n => n.toLocaleString('ko-KR');
 
+function timeAgo(iso){
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 60) return '방금';
+  if (s < 3600) return Math.floor(s/60) + '분 전';
+  if (s < 86400) return Math.floor(s/3600) + '시간 전';
+  return Math.floor(s/86400) + '일 전';
+}
+
+async function loadData(){
+  feed.innerHTML = '<div style="padding:60px 0;text-align:center;color:var(--ink-3);font-size:14px">불러오는 중…</div>';
+  const [{ data: rows, error }, { data: voteRows }, { data: cmtRows }] = await Promise.all([
+    db.from('agendas').select('*').order('id', { ascending: false }),
+    db.from('votes').select('agenda_id,choice'),
+    db.from('comments').select('*').order('created_at', { ascending: true }),
+  ]);
+  if (error) {
+    feed.innerHTML = '<div style="padding:60px 0;text-align:center;color:var(--ink-3)">불러오기 실패. 새로고침해 주세요.</div>';
+    return;
+  }
+  agendas = (rows || []).map(r => {
+    const counts = { poster:0, other:0, both:0 };
+    (voteRows || []).filter(v => v.agenda_id === r.id).forEach(v => counts[v.choice]++);
+    const comments = (cmtRows || [])
+      .filter(c => c.agenda_id === r.id)
+      .map(c => ({ id: c.id, nick: c.nick, text: c.body, likes: c.likes, created_at: c.created_at }));
+    return { ...r, votes: counts, comments };
+  });
+  render();
+  Object.entries(myVotes).forEach(([id, choice]) => {
+    const card = feed.querySelector(`.card[data-id="${id}"]`);
+    const a = agendas.find(x => x.id === +id);
+    if (card && a) revealResult(card, a, choice, true);
+  });
+}
+
 function cardHTML(a){
   const total = a.votes.poster + a.votes.other + a.votes.both;
   const teaser = total > 0
@@ -597,7 +644,7 @@ function cardHTML(a){
       <div class="track"><div class="fill"></div></div>
     </div>`).join('');
 
-  const cmtList = a.comments.map((c,i)=>commentHTML(c,i)).join('');
+  const cmtList = a.comments.map(c => commentHTML(c)).join('');
 
   return `
   <article class="card" data-id="${a.id}">
@@ -636,8 +683,8 @@ function cardHTML(a){
 
 function commentHTML(c){
   return `
-    <div class="cmt">
-      <div class="cmt-meta"><span class="cmt-nick">${c.nick}</span><span>·</span><span>방금</span></div>
+    <div class="cmt" data-cmt-id="${c.id || ''}">
+      <div class="cmt-meta"><span class="cmt-nick">${c.nick}</span><span>·</span><span>${c.created_at ? timeAgo(c.created_at) : '방금'}</span></div>
       <div class="cmt-text">${c.text}</div>
       <div class="cmt-like" data-likes="${c.likes}">♡ ${nf(c.likes)}</div>
     </div>`;
@@ -653,13 +700,20 @@ function bindCard(card){
   const a = agendas.find(x=>x.id===id);
 
   // vote
-  card.querySelectorAll('.vote').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      if(card.classList.contains('voted')) return;
+  card.querySelectorAll('.vote').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (card.classList.contains('voted')) return;
       const k = btn.dataset.k;
+      const { error } = await db.from('votes').insert({ agenda_id: id, choice: k, session_id: SID });
+      if (error) {
+        toast(error.code === '23505' ? '이미 판결하셨어요' : '오류가 발생했어요. 다시 시도해주세요.');
+        return;
+      }
       a.votes[k] += 1;
-      revealResult(card, a, k);
-      gtag('event', 'vote_cast', { agenda_id: a.id, agenda_title: a.title, vote_type: k, category: a.cat });
+      myVotes[id] = k;
+      localStorage.setItem('my_votes', JSON.stringify(myVotes));
+      revealResult(card, a, k, false);
+      gtag('event', 'vote_cast', { agenda_id: id, agenda_title: a.title, vote_type: k, category: a.cat });
     });
   });
 
@@ -681,15 +735,22 @@ function bindCard(card){
   const send  = card.querySelector('.cmt-send');
   const list  = card.querySelector('.cmt-list');
   const headN = card.querySelector('.cmt-head .n');
-  const submit = ()=>{
+  const submit = async () => {
     const v = input.value.trim();
-    if(!v) return;
-    a.comments.push({nick:'익명의 배심원', text:v, likes:0});
-    list.insertAdjacentHTML('beforeend', commentHTML({nick:'익명의 배심원', text:v, likes:0}));
+    if (!v) return;
+    send.disabled = true;
+    const { data, error } = await db.from('comments')
+      .insert({ agenda_id: id, nick: '익명의 배심원', body: v, likes: 0 })
+      .select().single();
+    send.disabled = false;
+    if (error) { toast('댓글 등록 실패. 다시 시도해주세요.'); return; }
+    const newCmt = { id: data.id, nick: data.nick, text: data.body, likes: 0, created_at: data.created_at };
+    a.comments.push(newCmt);
+    list.insertAdjacentHTML('beforeend', commentHTML(newCmt));
     bindLikes(list);
     headN.textContent = a.comments.length;
-    input.value='';
-    gtag('event', 'comment_submit', { agenda_id: a.id, agenda_title: a.title });
+    input.value = '';
+    gtag('event', 'comment_submit', { agenda_id: id, agenda_title: a.title });
   };
   send.addEventListener('click', submit);
   input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
@@ -698,15 +759,17 @@ function bindCard(card){
 }
 
 function bindLikes(scope){
-  scope.querySelectorAll('.cmt-like').forEach(el=>{
-    if(el.dataset.bound) return;
+  scope.querySelectorAll('.cmt-like').forEach(el => {
+    if (el.dataset.bound) return;
     el.dataset.bound = '1';
-    el.addEventListener('click', ()=>{
+    el.addEventListener('click', async () => {
+      const cmtId = el.closest('.cmt')?.dataset.cmtId;
       let n = +el.dataset.likes;
-      if(el.dataset.liked){ n--; el.removeAttribute('data-liked'); el.style.color=''; }
-      else { n++; el.dataset.liked='1'; el.style.color='var(--poster)'; }
+      if (el.dataset.liked) { n--; el.removeAttribute('data-liked'); el.style.color = ''; }
+      else { n++; el.dataset.liked = '1'; el.style.color = 'var(--poster)'; }
       el.dataset.likes = n;
-      el.innerHTML = `${el.dataset.liked?'♥':'♡'} ${nf(n)}`;
+      el.innerHTML = `${el.dataset.liked ? '♥' : '♡'} ${nf(n)}`;
+      if (cmtId) await db.from('comments').update({ likes: n }).eq('id', cmtId);
     });
   });
 }
@@ -720,32 +783,42 @@ function winner(a){
   return {...best, pct: t? Math.round(best.c/t*100):0};
 }
 
-function revealResult(card, a, mine){
+function revealResult(card, a, mine, instant){
   const t = total(a);
   const win = winner(a);
   const wColor = `var(--${win.k})`;
 
-  // verdict line
-  const vline = card.querySelector('.verdict-line');
-  vline.innerHTML = `<b style="color:${wColor}">${labelOf(win.k)}</b><span class="cnt">${nf(a.votes[win.k])}표 · ${win.pct}%</span>`;
+  card.querySelector('.verdict-line').innerHTML =
+    `<b style="color:${wColor}">${labelOf(win.k)}</b><span class="cnt">${nf(a.votes[win.k])}표 · ${win.pct}%</span>`;
 
-  // bars
-  card.querySelectorAll('.bar-row').forEach(row=>{
+  card.querySelectorAll('.bar-row').forEach(row => {
     const k = row.dataset.k;
     const c = a.votes[k];
-    const pct = t? Math.round(c/t*100):0;
-    if(k!==win.k) row.classList.add('dim');
+    const pct = t ? Math.round(c/t*100) : 0;
+    if (k !== win.k) row.classList.add('dim');
     row.querySelector('.c').textContent = nf(c);
-    if(k===mine) row.querySelector('.mine').hidden = false;
-    // animate
+    if (k === mine) row.querySelector('.mine').hidden = false;
     const fill = row.querySelector('.fill');
-    const pEl = row.querySelector('.p');
-    requestAnimationFrame(()=>{ setTimeout(()=>{ fill.style.width = pct+'%'; },50); });
-    animateCount(pEl, pct, 800);
+    const pEl  = row.querySelector('.p');
+    if (instant) {
+      fill.style.cssText += ';transition:none';
+      fill.style.width = pct + '%';
+      pEl.textContent = pct;
+    } else {
+      requestAnimationFrame(() => setTimeout(() => { fill.style.width = pct + '%'; }, 50));
+      animateCount(pEl, pct, 800);
+    }
   });
 
-  card.classList.add('voted');
-  setTimeout(()=>{ card.querySelector('.verdict').scrollIntoView({behavior:'smooth', block:'nearest'}); }, 260);
+  if (instant) {
+    const result = card.querySelector('.result');
+    result.style.transition = 'none';
+    card.classList.add('voted');
+    requestAnimationFrame(() => { result.style.transition = ''; });
+  } else {
+    card.classList.add('voted');
+    setTimeout(() => card.querySelector('.verdict').scrollIntoView({ behavior:'smooth', block:'nearest' }), 260);
+  }
 }
 
 function animateCount(el, target, dur){
@@ -844,19 +917,20 @@ function validate(){
   postBtn.disabled = !(cTitle.value.trim() && cBody.value.trim() && selCat);
 }
 
-postBtn.addEventListener('click', ()=>{
-  const newId = Math.max(...agendas.map(a=>a.id)) + 1;
-  agendas.unshift({
-    id:newId, cat:selCat, title:cTitle.value.trim(), body:cBody.value.trim(),
-    votes:{poster:0,other:0,both:0}, comments:[]
-  });
-  gtag('event', 'post_submit', { agenda_title: cTitle.value.trim(), category: selCat });
+postBtn.addEventListener('click', async () => {
+  postBtn.disabled = true;
+  const { data, error } = await db.from('agendas')
+    .insert({ cat: selCat, title: cTitle.value.trim(), body: cBody.value.trim() })
+    .select().single();
+  if (error) { toast('등록 실패. 다시 시도해주세요.'); postBtn.disabled = false; return; }
+  agendas.unshift({ ...data, votes: { poster:0, other:0, both:0 }, comments: [] });
+  gtag('event', 'post_submit', { agenda_title: data.title, category: data.cat });
   render();
   closeSheet();
-  cTitle.value=''; cBody.value=''; selCat=null;
-  chips.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
-  postBtn.disabled=true;
-  feed.scrollTo({top:0, behavior:'smooth'});
+  cTitle.value = ''; cBody.value = ''; selCat = null;
+  chips.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+  postBtn.disabled = false;
+  feed.scrollTo({ top:0, behavior:'smooth' });
   toast('판결대에 올라갔어요 ⚖️ 링크를 공유해 표를 모아보세요');
 });
 
@@ -885,7 +959,7 @@ function toast(msg){
   toastTimer=setTimeout(()=>t.classList.remove('show'), 2600);
 }
 
-render();
+loadData();
 
 /* ---------- privacy / terms modal ---------- */
 const pvModal  = document.getElementById('pv-modal');
